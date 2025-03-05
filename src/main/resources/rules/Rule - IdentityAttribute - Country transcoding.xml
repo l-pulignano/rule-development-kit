@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule name="Country transcoding" type="IdentityAttribute">
+  <Description>Calculates Country and City associated with the location</Description>
+  <Source><![CDATA[
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import sailpoint.object.*;
+import sailpoint.server.IdnRuleUtil;
+import sailpoint.rule.*;
+
+
+Account account = idn.getAccountByNativeIdentity("HR Oracle HCM Cloud (Source)", identity.getStringAttribute("locationCodeTranscoding"));
+String countryName = idn.getAccountAttribute(account , "countryName");
+String cityName = idn.getAccountAttribute(account, "cityName");
+
+return cityName + "XXXXX" + countryName;
+
+  ]]></Source>
+</Rule>

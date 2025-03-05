@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule name="UIDGenerator" type="IdentityAttribute">
+  <Description>This will generate a unique username for active directory</Description>
+  <Source><![CDATA[
+      import sailpoint.object.*;
+      import sailpoint.rule.*;
+      import sailpoint.server.IdnRuleUtil;
+      import sailpoint.tools.GeneralException;
+
+      log.debug("Rule UIDGenerator - Start");  
+
+      Account account = idn.getAccountByNativeIdentity("HR Oracle HCM Cloud (Source)", identity.getStringAttribute("hcmPersonNumber"));
+      String USER_NAME = idn.getAccountAttribute(account , "USER_NAME");
+
+      log.debug("Rule UIDGenerator USERNAME=" + USER_NAME);
+      int MAX_USERNAME_LENGTH = 12;
+
+	  if(USER_NAME!=null && !USER_NAME.isEmpty()) {
+          log.debug("Rule UIDGenerator - The attribute 'USER_NAME' from HCM is already present: '" + USER_NAME + "'. No need to generate a new userID.");
+		  return USER_NAME;
+	  }
+	  return generateUid();
+		
+		  
+      public String generateUid() throws GeneralException {
+          log.debug("Rule UIDGenerator - Start 'generateUid' method");
+          String prefix = "C";
+          String suffix = "W";
+          int number_account = idn.countAccounts("HR Oracle HCM Cloud (Source)");
+          log.debug("Rule UIDGenerator - Totale account trovati="+number_account);
+          String uid = String.format("%s%05d%s", prefix, number_account + 1, suffix); //Genero così uno UID con un prefisso, un numero che viene riempito di zeri nel caso in cui non supera 5 caratteri ed infine ho anche un suffisso
+		  
+          log.info("Rule UIDGenerator - UserID generata: '" + uid + "'");
+
+          while (!isUnique(uid)){
+			  log.debug("Rule UIDGenerator - La user '" + uid + "' è già utilizzata! Incremento il contatore di 1.");
+              number_account++;
+              uid = String.format("%s%05d%s", prefix, number_account + 1, suffix);
+          }
+          log.info("Rule UIDGenerator - UserID finale univoca: '" + uid + "'");
+          return uid;
+      }
+
+      public boolean isUnique (String uid) throws GeneralException {
+		  log.trace("Rule UIDGenerator - Controllo univocità per la user '" + uid + "'.");
+          return !idn.accountExistsByDisplayName("HR Oracle HCM Cloud (Source)", uid);
+      }
+  ]]></Source>
+</Rule>
