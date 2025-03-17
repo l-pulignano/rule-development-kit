@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Unique DN Generator" type="AttributeGenerator">
+	<Description>
+		Creates unique identifiers
+	</Description>
+	<Source><![CDATA[
+import sailpoint.api.*;
+import sailpoint.connector.*;
+import sailpoint.object.*;
+import sailpoint.rule.*;
+import sailpoint.tools.*;
+import java.util.*;
+import org.apache.commons.lang.StringUtils;
+
+
+    public boolean isUnique(String dn){
+		log.error("Rule - UniqueID Generator: start isUnique for '" + dn + "'");
+        List SOURCE_IDS = new ArrayList();
+		SOURCE_IDS.add("3eb7a5f306bd4c8bb5cf182e3a9ec78c"); 
+        String attributeToSearchFor = "distinguishedName"; 
+        String SEARCH_OP = "Equals"; 
+        List SEARCH_VALUES = new ArrayList();
+        SEARCH_VALUES.add(dn);
+        int totalAccountsFound = idn.attrSearchCountAccounts(SOURCE_IDS, attributeToSearchFor, SEARCH_OP, SEARCH_VALUES); 
+		boolean isUnique = totalAccountsFound == 0;
+		log.error("Rule - UniqueID Generator: isUnique method - totalAccountsFound: " + totalAccountsFound + ", isUnique: " + isUnique);
+		return isUnique; 
+    }
+
+String firstname = identity.getAttribute("firstname");
+String lastname = identity.getAttribute("lastname");
+String locationIdAlias = identity.getAttribute("locationIdAlias");
+String countryIso2char = identity.getAttribute("countryIso2char");
+String ouIdentityType = identity.getAttribute("ouIdentityType");
+String legalEmployerAlias = identity.getAttribute("legalEmployerAlias");
+
+log.error("Rule - Unique DN Generator: firstname='"+firstname+"', lastname='"+lastname+"', locationIdAlias='"+locationIdAlias+"', countryIso2char='"+countryIso2char+"', ouIdentityType='"+ouIdentityType+"', legalEmployerAlias='"+legalEmployerAlias+"'");
+
+String dn = "CN=" + lastname + " " + firstname + ",OU=" + locationIdAlias + ",OU=" + countryIso2char + ",OU=" + ouIdentityType + ",OU=Users,OU=" + legalEmployerAlias + ",OU=Customer Objects,OU=TestOU,DC=CAAUTOBANK,DC=GCA";
+if(isUnique(dn)){
+	log.error("Rule - Unique DN Generator: dn='"+dn+"' is unique!");
+	return dn;
+}
+
+log.error("Rule - Unique DN Generator: dn='"+dn+"' is NOT unique! Now we need to introduce a unique counter to make it unique.");
+
+int uniqueCounter = 1;
+while(true){
+	dn = "CN=" + lastname + " " + firstname + " " + uniqueCounter + ",OU=" + locationIdAlias + ",OU=" + countryIso2char + ",OU=" + ouIdentityType + ",OU=Users,OU=" + legalEmployerAlias + ",OU=Customer Objects,OU=TestOU,DC=CAAUTOBANK,DC=GCA";
+
+	if(isUnique(dn)){
+		log.error("Rule - Unique DN Generator: dn='"+dn+"' is unique!");
+		return dn;
+	}
+	log.error("Rule - Unique DN Generator: dn='"+dn+"' is NOT unique! Now we need to increment the unique counter.");
+	uniqueCounter++;
+}
+
+
+		]]></Source>
+</Rule>

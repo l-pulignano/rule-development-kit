@@ -5,9 +5,15 @@
 		Creates unique identifiers
 	</Description>
 	<Source><![CDATA[
-import sailpoint.object.*;
 import sailpoint.api.*;
+import sailpoint.connector.*;
+import sailpoint.object.*;
+import sailpoint.rule.*;
+// import sailpoint.server.*;
+import sailpoint.tools.*;
 import java.util.*;
+import org.apache.commons.lang.StringUtils;
+
 
     public String generateUniqueIdentifier(){
 		
@@ -16,33 +22,39 @@ import java.util.*;
 		String username = "";
 		int totalIterations = 0;
 		for(int counter=0; counter<10; counter++) {
+			log.error("Rule - UniqueID Generator: Current counter = " + counter);
 			// Range per counter=0: [C00000W, C09999W]
 			// Range per counter=1: [C10000W, C19999W]
 			// Range per counter=9: [C90000W, C99999W]
 			int totalAccounts = totalAccountsThatStartWith(initial, counter); // Cerca gli account che INIZIANO con C0, C1, C2, ..., C9
-			log.debug("Rule - UniqueID Generator: Found totalAccounts=" + totalAccounts + " that start with " + initial + counter);
+			log.error("Rule - UniqueID Generator: Found totalAccounts=" + totalAccounts + " that start with " + initial + counter);
 			for(int nextAccount=totalAccounts; nextAccount<=10000; nextAccount++) {
 				totalIterations++;
 				if(nextAccount < 10000) {
 					//nextAccount = 5723
-					username = "C" + counter + padLeftWithZeroes(String.valueOf(nextAccount)) + "W"; 
-					log.debug("Rule - UniqueID Generator: username generated="  + username);
+					username = initial + counter + padLeftWithZeroes(String.valueOf(nextAccount)) + suffix; //C00000W, C00001W, ..., C05723W, ..., C09999W
+					log.error("Rule - UniqueID Generator: username generated = '"  + username + "'");
 				}
 				 else if(nextAccount == 10000) {
 					//nextAccount = 10000
-					username = "C" + (counter+1) + "0000" + "W"; // C10000W, C20000W, ..., C90000W
-					log.debug("Rule - UniqueID Generator: username generated limit case=" + username);
+					username = initial + (counter+1) + "0000" + suffix; // Gestisce le username del tipo: C10000W, C20000W, ..., C90000W
+					log.error("Rule - UniqueID Generator: username generated as corner case = " + username + "'");
 				}
 				if(isUnique(username)){
-					log.debug("Rule - UniqueID Generator: unique username found in " + totalIterations + " iterations");
+					log.error("Rule - UniqueID Generator: unique username found in " + totalIterations + " iterations");
 					return username;
+				}
+				else {
+					log.error("Rule - UniqueID Generator: username non unica!");
 				}
 			}
 		}
+		log.error("Rule - UniqueID Generator: No username found!");
 		return "NO_UNIQUE_USERNAME_FOUND";
 	}
 
 	public String padLeftWithZeroes(String totalAccounts) {
+		log.error("Rule - UniqueID Generator: padLeftWithZeroes with totalAccounts=" + totalAccounts);
 		String pad = "";
         if (totalAccounts.length() == 1){
             pad = "000";
@@ -54,46 +66,65 @@ import java.util.*;
             pad = "";
         } else if(totalAccounts.length() >= 5){
             //Log errore: totale account trovati = totalAccounts ma sono supportati massimo fino a 9999.
-			log.debug("Rule - UniqueID Generator: totalAccounts non può superare 10000 ");
+			log.error("Rule - UniqueID Generator: totalAccounts non può superare 10000!");
         }
 		return pad + totalAccounts;
     }
 
      public boolean isUnique(String username){
 		 // Controlla puntualmente l'esistenza di account con un dato username 
-         List SOURCE_IDS = new ArrayList(Arrays.asList(new String[]{"3eb7a5f306bd4c8bb5cf182e3a9ec78c"}));  // Ricerca tramite ID della Source AD
-         String PROMOTED_ATTR_NAME = "sAMAccountName"; // Attributo da cercare
+		 log.error("Rule - UniqueID Generator: start isUnique '" + username + "'");
+         List SOURCE_IDS = new ArrayList();
+		 SOURCE_IDS.add("3eb7a5f306bd4c8bb5cf182e3a9ec78c"); // Ricerca tramite ID della Source AD
+         String attributeToSearchFor = "sAMAccountName"; // Attributo da cercare
          String SEARCH_OP = "Equals"; 
          List SEARCH_VALUES = new ArrayList();
          SEARCH_VALUES.add(username);
-         return idn.attrSearchCountAccounts(SOURCE_IDS, PROMOTED_ATTR_NAME, SEARCH_OP, SEARCH_VALUES) == 0; // Ritorna TRUE se non ci sono account che matchano il filtro
+         int totalAccountsFound = idn.attrSearchCountAccounts(SOURCE_IDS, attributeToSearchFor, SEARCH_OP, SEARCH_VALUES); 
+		 boolean isUnique = totalAccountsFound == 0;
+		 log.error("Rule - UniqueID Generator: isUnique method - totalAccountsFound: " + totalAccountsFound + ", isUnique: " + isUnique);
+		 return isUnique; // Ritorna TRUE se non ci sono account che matchano il filtro
      }
 
      public int totalAccountsThatStartWith(String initial, int counter){
 		 // Controlla il totale di account che iniziano con una stringa
-		 // initial = "C";
-		 // counter = 0;
-         List SOURCE_IDS = new ArrayList(Arrays.asList(new String[]{"3eb7a5f306bd4c8bb5cf182e3a9ec78c"}));  // Ricerca tramite ID della Source AD
-         String PROMOTED_ATTR_NAME = "sAMAccountName"; // Attributo da cercare
+		 log.error("Rule - UniqueID Generator: start totalAccountsThatStartWith '" + initial + counter + "'");
+         List SOURCE_IDS = new ArrayList();
+		 SOURCE_IDS.add("3eb7a5f306bd4c8bb5cf182e3a9ec78c"); // Ricerca tramite ID della Source AD
+         String attributeToSearchFor = "sAMAccountName"; // Attributo da cercare
          String SEARCH_OP = "StartsWith"; 
          List SEARCH_VALUES = new ArrayList();
          SEARCH_VALUES.add(initial + counter); // C0*, C1*, ...
 		  
-         return idn.attrSearchCountAccounts(SOURCE_IDS, PROMOTED_ATTR_NAME, SEARCH_OP, SEARCH_VALUES);
+         int totalAccountsFound = idn.attrSearchCountAccounts(SOURCE_IDS, attributeToSearchFor, SEARCH_OP, SEARCH_VALUES);
+		 log.error("Rule - UniqueID Generator: totalAccountsThatStartWith method - totalAccountsFound: " + totalAccountsFound);
+		 return totalAccountsFound;
      }
 
 
-// Prendi USER_NAME dalla Source HCM. Fonte: https://developer.sailpoint.com/docs/extensibility/rules/rule-utility/#get-multiple-attributes-from-the-first-account-retreived-from-a-source
-String hcmUsername = identity.getAttribute("hcmUsername");
+// Codice aggiornato
+return generateUniqueIdentifier();
 
-if(hcmUsername == null || hcmUsername.isEmpty()){
-	// HCM non ci ha passato nessuna username. Generiamo una user univoca
-	log.debug("Rule - UniqueID Generator: start generation of a new UserID");
-	return generateUniqueIdentifier();
-}
-// HCM ci ha già passato la username, non dobbiamo rigenerarla ma usiamo questa!
-log.debug("Rule - UniqueID Generator: username '" + hcmUsername + "' already present");
-return hcmUsername;
+
+/* CODICE DEPRECATO!!!
+Nel codice seguente prendevamo l'attributo Identity "hcmUsername" per determinare se l'utente avesse già un account AD o meno. 
+Tuttavia questo controllo non è più valido perchè nell'Identity Profile HCM popoliamo automaticamente l'hcmUsername! 
+Controllare l'hcmUsername porterebbe, ERRONEAMENTE, a credere che l'utente abbia già un account AD!
+
+
+	// Prendi USER_NAME dalla Source HCM. Fonte: 
+	String hcmUsername = identity.getAttribute("hcmUsername"); // Corrisponde all'UPN di AD
+
+	if(hcmUsername == null || hcmUsername.isEmpty()){ 
+		// HCM non ci ha passato nessuna username. Generiamo una user univoca
+		log.error("Rule - UniqueID Generator: start generation of a new UserID");
+		return generateUniqueIdentifier();
+	}
+	// HCM ci ha già passato la username, non dobbiamo rigenerarla ma usiamo questa!
+	log.error("Rule - UniqueID Generator: username '" + hcmUsername + "' already present");
+	return hcmUsername;
+
+*/
 
 		]]></Source>
 </Rule>

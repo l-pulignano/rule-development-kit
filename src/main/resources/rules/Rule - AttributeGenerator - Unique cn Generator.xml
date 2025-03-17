@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Unique cn Generator" type="AttributeGenerator">
+	<Description>
+		Creates unique identifiers
+	</Description>
+	<Source><![CDATA[
+import sailpoint.api.*;
+import sailpoint.connector.*;
+import sailpoint.object.*;
+import sailpoint.rule.*;
+// import sailpoint.server.*;
+import sailpoint.tools.*;
+import java.util.*;
+import org.apache.commons.lang.StringUtils;
+
+
+    public boolean isUnique(String cn){
+		// Controlla puntualmente l'esistenza di account con un dato cn 
+		log.error("Rule - UniqueID Generator: start isUnique for '" + cn + "'");
+        List SOURCE_IDS = new ArrayList();
+		SOURCE_IDS.add("3eb7a5f306bd4c8bb5cf182e3a9ec78c"); // Ricerca tramite ID della Source AD
+        String attributeToSearchFor = "cn"; // Attributo da cercare
+        String SEARCH_OP = "Equals"; 
+        List SEARCH_VALUES = new ArrayList();
+        SEARCH_VALUES.add(cn);
+        int totalAccountsFound = idn.attrSearchCountAccounts(SOURCE_IDS, attributeToSearchFor, SEARCH_OP, SEARCH_VALUES); 
+		boolean isUnique = totalAccountsFound == 0;
+		log.error("Rule - UniqueID Generator: isUnique method - totalAccountsFound: " + totalAccountsFound + ", isUnique: " + isUnique);
+		return isUnique; // Ritorna TRUE se non ci sono account che matchano il filtro
+    }
+
+String firstname = identity.getAttribute("firstname");
+String lastname = identity.getAttribute("lastname");
+
+log.error("Rule - Unique cn Generator: firstname='"+firstname+"', lastname='"+lastname+"'");
+
+String cn = lastname + " "+ firstname;
+if(isUnique(cn)){
+	log.error("Rule - Unique cn Generator: cn='"+cn+"' is unique!");
+	return cn;
+}
+
+log.error("Rule - Unique cn Generator: cn='"+cn+"' is NOT unique! Now we need to introduce a unique counter to make it unique.");
+
+int uniqueCounter = 1;
+int counter = 0;
+int maxRetries = 10;
+while(counter < maxRetries){ 
+	cn = lastname + " "+ firstname + uniqueCounter;
+	
+	if(isUnique(cn)){
+		log.error("Rule - Unique cn Generator: cn='"+cn+"' is unique!");
+		return cn;
+	}
+	log.error("Rule - Unique cn Generator: cn='"+cn+"' is NOT unique! Now we need to increment the unique counter.");
+	uniqueCounter++;
+}
+
+
+		]]></Source>
+</Rule>

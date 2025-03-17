@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Unique UPN Generator" type="AttributeGenerator">
+	<Description>
+		Creates unique identifiers
+	</Description>
+	<Source><![CDATA[
+import sailpoint.api.*;
+import sailpoint.connector.*;
+import sailpoint.object.*;
+import sailpoint.rule.*;
+// import sailpoint.server.*;
+import sailpoint.tools.*;
+import java.util.*;
+import org.apache.commons.lang.StringUtils;
+
+
+    public boolean isUnique(String upn){
+		// Controlla puntualmente l'esistenza di account con un dato upn 
+		log.error("Rule - UniqueID Generator: start isUnique for '" + upn + "'");
+        List SOURCE_IDS = new ArrayList();
+		SOURCE_IDS.add("3eb7a5f306bd4c8bb5cf182e3a9ec78c"); // Ricerca tramite ID della Source AD
+        String attributeToSearchFor = "userPrincipalName"; // Attributo da cercare
+        String SEARCH_OP = "Equals"; 
+        List SEARCH_VALUES = new ArrayList();
+        SEARCH_VALUES.add(upn);
+        int totalAccountsFound = idn.attrSearchCountAccounts(SOURCE_IDS, attributeToSearchFor, SEARCH_OP, SEARCH_VALUES); 
+		boolean isUnique = totalAccountsFound == 0;
+		log.error("Rule - UniqueID Generator: isUnique method - totalAccountsFound: " + totalAccountsFound + ", isUnique: " + isUnique);
+		return isUnique; // Ritorna TRUE se non ci sono account che matchano il filtro
+    }
+
+String firstname = identity.getAttribute("firstname");
+String lastname = identity.getAttribute("lastname");
+String personType = identity.getAttribute("personType");
+String legalEmployerAlias = identity.getAttribute("legalEmployerAlias");
+
+log.error("Rule - Unique UPN Generator: firstname='"+firstname+"', lastname='"+lastname+"', personType='"+personType+"', legalEmployerAlias='"+legalEmployerAlias+"'");
+
+String domainPrefix = ""; // Rimane vuoto solo per gli utenti "personType=Regular"
+String domain = "ca-autobank"; // Rimane "ca-autobank" solo per gli utenti con "legalEmployerAlias=CAAB"
+
+if(personType == null || personType.isEmpty() || !personType.equalsIgnoreCase("Regular")){
+	// Se il PersonType non fosse presente sarebbe un'eccezione ma non blocchiamo la procedura!
+	// Se l'utente non è un "personType=Regular" allora il suo domainPrefix deve avere il prefisso "external."
+	// Solo se l'utente fosse un "personType=Regular" allora possiamo lasciare il domainPrefix vuoto
+	domainPrefix = "external.";
+}
+
+
+if(legalEmployerAlias == null || legalEmployerAlias.isEmpty() || !legalEmployerAlias.equalsIgnoreCase("CAAB")){
+	// Se il legalEmployerAlias non fosse presente sarebbe un'eccezione ma non blocchiamo la procedura!
+	// Se l'utente non è un "legalEmployerAlias=CAAB" allora il suo domain deve diventare "drivalia"
+	// Solo se l'utente fosse un "legalEmployerAlias=CAAB" allora possiamo lasciare il domain "ca-autobank"
+	domain = "drivalia";
+}
+
+log.error("Rule - Unique UPN Generator: domainPrefix='"+domainPrefix+"', domain='"+domain+"'");
+
+String upn = firstname + "." + lastname + "@" + domainPrefix + domain + ".com";
+if(isUnique(upn)){
+	log.error("Rule - Unique UPN Generator: upn='"+upn+"' is unique!");
+	return upn;
+}
+
+log.error("Rule - Unique UPN Generator: upn='"+upn+"' is NOT unique! Now we need to introduce a unique counter to make it unique.");
+
+int uniqueCounter = 1;
+while(true){
+	upn = firstname + "." + lastname + uniqueCounter + "@" + domainPrefix + domain + ".com";
+	
+	if(isUnique(upn)){
+		log.error("Rule - Unique UPN Generator: upn='"+upn+"' is unique!");
+		return upn;
+	}
+	log.error("Rule - Unique UPN Generator: upn='"+upn+"' is NOT unique! Now we need to increment the unique counter.");
+	uniqueCounter++;
+}
+
+
+		]]></Source>
+</Rule>
